@@ -1,0 +1,79 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "instanceName": {
+            "type": "string"
+        },
+        "databasePassword": {
+            "type": "securestring"
+        },
+        "databaseConnectionString": {
+            "type": "securestring"
+        },
+        "templateRepoBase": {
+            "type": "string",
+            "defaultValue": "https://raw.githubusercontent.com/UiPath/DevOps"
+        },
+        "templateRepoBranch": {
+            "type": "string",
+            "defaultValue": "master"
+        },
+        "orchestratorTemplateUri": {
+            "type": "string",
+            "defaultValue": "ARM/uipath-orchestrator/azuredeploy.json"
+        }
+    },
+    "variables": {
+        "templateUriBase": "[concat(parameters('templateRepoBase'), '/', parameters('templateRepoBranch'), '/')]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2017-05-10",
+            "name": "[concat('sm', uniqueString(deployment().name))]",
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('templateUriBase'), parameters('orchestratorTemplateUri'))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "instanceName": {
+                        "value": "[parameters('instanceName')]"
+                    },
+                    "databasePassword": {
+                        "value": "[parameters('databasePassword')]"
+                    },
+                    "databaseConnectionString": {
+                        "value": "[parameters('databaseConnectionString')]"
+                    },
+                    "templateRepoBase": {
+                        "value": "[parameters('templateRepoBase')]"
+                    },
+                    "templateRepoBranch": {
+                        "value": "[parameters('templateRepoBranch')]"
+                    },
+                    "webAppTier": {
+                        "value": "Standard"
+                    },
+                    "webAppSku": {
+                        "value": "S2"
+                    },
+                    "webappInstanceCount": {
+                        "value": 2
+                    },
+                    "databaseTier": {
+                        "value": "Premium"
+                    },
+                    "databaseSku": {
+                        "value": "P1"
+                    },
+                    "databaseMaxSizeBytes": {
+                        "value": "107374182400"
+                    }
+                }
+            }
+        }
+    ]
+}

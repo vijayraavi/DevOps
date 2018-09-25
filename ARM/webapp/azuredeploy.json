@@ -1,0 +1,156 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "webAppName": {
+        "type": "string",
+        "metadata": {
+          "description": "Name of the Web App"
+        }
+      },
+      "sku": {
+        "type": "string",
+        "defaultValue": "P3v2",
+        "metadata": {
+          "description": "The SKU for the App Service Plan"
+        }
+      },
+      "tier": {
+        "type": "string",
+        "defaultValue": "PremiumV2",
+        "metadata": {
+          "description": "The Tier for the App Service Plan"
+        }
+      },
+      "instanceCount": {
+        "type": "int",
+        "defaultValue": 1,
+        "metadata": {
+          "description": "The number of instances in the App Service Plan"
+        }
+      },
+      "slots": {
+        "type": "array",
+        "defaultValue": [],
+        "metadata": {
+          "description": "Array with the names for the deployment slots"
+        },
+        "maxLength": 19
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location for all resources."
+        }
+      },
+      "connectionString": {
+        "type": "string",
+        "metadata": {
+          "description": "Main database connection string"          
+        }
+      },
+      "connectionStringType": {
+        "type": "string",
+        "defaultValue": "SQLAzure",
+        "metadata": {
+          "description": ""
+        }
+      }
+    },
+    "variables": {
+      "appServicePlanName": "[parameters('webAppName')]"
+    },
+    "resources": [
+      {
+        "apiVersion": "2017-08-01",
+        "type": "Microsoft.Web/serverfarms",
+        "kind": "app",
+        "name": "[variables('appServicePlanName')]",
+        "location": "[parameters('location')]",
+        "comments": "This app service plan is used for the web app and slots.",
+        "tags": {
+          "displayName": "AppServicePlan"
+        },
+        "properties": {},
+        "dependsOn": [],
+        "sku": {
+          "name": "[parameters('sku')]",
+          "tier": "[parameters('tier')]",
+          "capacity": "[parameters('instanceCount')]"
+        }
+      },
+      {
+        "apiVersion": "2016-08-01",
+        "type": "Microsoft.Web/sites",
+        "kind": "app",
+        "name": "[parameters('webAppName')]",
+        "location": "[parameters('location')]",
+        "comments": "This is the web app, also the default 'nameless' slot.",
+        "tags": {
+          "displayName": "WebApp"
+        },
+        "properties": {
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+          "siteConfig": {
+            "netFrameworkVersion": "v4.7",
+            "use32BitWorkerProcess": false,
+            "webSocketsEnabled": true,
+            "alwaysOn": true 
+          }
+        },
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+        ],
+        "resources": [
+          {
+            "apiVersion": "2015-08-01",
+            "name": "appsettings",
+            "type": "config",
+            "dependsOn": [
+              "[resourceId('Microsoft.Web/Sites', parameters('webAppName'))]"
+            ],
+            "properties": {
+
+            }
+          },
+          {
+            "apiVersion": "2015-08-01",
+            "name": "connectionstrings",
+            "type": "config",
+            "dependsOn": [
+              "[resourceId('Microsoft.Web/Sites', parameters('webAppName'))]"
+            ],
+            "properties": {
+              "Default": {
+                "value": "[parameters('connectionString')]",
+                "type": "[parameters('connectionStringType')]"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "apiVersion": "2016-08-01",
+        "type": "Microsoft.Web/sites/slots",
+        "name": "[concat(parameters('webAppName'), '/', if(empty(parameters('slots')), 'dummy', parameters('slots')[copyIndex()]))]",
+        "condition": "[not(empty(parameters('slots')))]",
+        "kind": "app",
+        "location": "[parameters('location')]",
+        "comments": "This specifies the web app slots.",
+        "tags": {
+          "displayName": "WebAppSlots"
+        },
+        "properties": {
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+        },
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/Sites', parameters('webAppName'))]"
+        ],
+        "copy": {
+          "name": "webPortalSlot",
+          "count": "[if(empty(parameters('slots')), 1, length(parameters('slots')))]"
+        }
+      }
+    ]
+  }

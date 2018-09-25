@@ -1,0 +1,124 @@
+{
+    "$schema":"http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+    "contentVersion":"1.0.0.0",
+    "parameters":{
+        "serverName":{
+            "type":"string"
+        },
+        "administratorLogin":{
+            "type":"string"
+        },
+        "administratorLoginPassword":{
+            "type":"securestring"
+        },
+        "databaseName":{
+            "type":"string"
+        },
+        "databaseEdition":{
+            "type":"string",
+            "metadata": {
+                "description": "The databaseEdition (a.k.a. Tier) for the Database"
+            }
+        },
+        "databaseServiceObjective":{
+            "type":"string",
+            "metadata": {
+                "description": "The databaseServiceObjective (a.k.a. SKU) for the Database"
+            }
+        },
+        "databaseMaxSizeBytes": {
+            "type": "string",
+            "defaultValue": "1073741824"
+        },
+        "databaseCreateMode": {
+            "type": "string",
+            "defaultValue": "Default"
+        },
+        "sourceDatabaseId": {
+            "type": "string"
+        },
+        "location":{
+            "type":"string",
+            "defaultValue": "[resourceGroup().location]"
+        },
+        "importStorageKey":{
+            "type":"string",
+            "defaultValue": ""
+        },
+        "importStorageUri":{
+            "type":"string",
+            "defaultValue": ""
+        }
+    },
+    "variables":{
+        "collation": "SQL_Latin1_General_CP1_CI_AS",
+        "storageKeyType": "StorageAccessKey",
+        "version": "12.0",
+        "importExtensions": [],
+        "defaultSourceDatabaseId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Sql/servers/', parameters('serverName'),'/databases/master')]"
+    },
+    "resources":[
+        {
+            "name":"[parameters('serverName')]",
+            "type":"Microsoft.Sql/servers",
+            "apiVersion":"2014-04-01-preview",
+            "location":"[parameters('location')]",
+            "properties":{
+                "administratorLogin":"[parameters('administratorLogin')]",
+                "administratorLoginPassword":"[parameters('administratorLoginPassword')]",
+                "version":"[variables('version')]"
+            },
+            "resources":[
+                {
+                    "name":"AllowAzureIps",
+                    "type":"firewallrules",
+                    "apiVersion":"2014-04-01-preview",
+                    "location":"[parameters('location')]",
+                    "dependsOn":[
+                        "[concat('Microsoft.Sql/servers/', parameters('serverName'))]"
+                    ],
+                    "properties":{
+                        "startIpAddress":"0.0.0.0",
+                        "endIpAddress":"0.0.0.0"
+                    }
+                },
+                {
+                    "name":"[parameters('databaseName')]",
+                    "type":"databases",
+                    "apiVersion":"2014-04-01-preview",
+                    "location":"[parameters('location')]",
+                    "dependsOn":[
+                        "[concat('Microsoft.Sql/servers/', parameters('serverName'))]"
+                    ],
+                    "properties":{
+                        "collation":"[variables('collation')]",
+                        "createMode": "[parameters('databaseCreateMode')]",
+                        "sourceDatabaseId": "[if( empty(parameters('sourceDatabaseId')), variables('defaultSourceDatabaseId'), parameters('sourceDatabaseId') )]",
+                        "edition":"[parameters('databaseEdition')]",
+                        "maxSizeBytes":"[parameters('databaseMaxSizeBytes')]",
+                        "requestedServiceObjectiveName":"[parameters('databaseServiceObjective')]"
+                    },
+                    "resources":[
+                        {
+                            "name": "Import",
+                            "type":"extensions",
+                            "apiVersion":"2014-04-01-preview",
+                            "condition": "[not(empty(parameters('importStorageUri')))]",
+                            "dependsOn":[
+                                "[concat('Microsoft.Sql/servers/', parameters('serverName'), '/databases/', parameters('databaseName'))]"
+                            ],
+                            "properties":{
+                                "storageKeyType":"[variables('storageKeyType')]",
+                                "storageKey":"[parameters('importStorageKey')]",
+                                "storageUri":"[parameters('importStorageUri')]",
+                                "administratorLogin":"[parameters('administratorLogin')]",
+                                "administratorLoginPassword":"[parameters('administratorLoginPassword')]",
+                                "operationMode":"Import"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

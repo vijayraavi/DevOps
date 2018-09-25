@@ -1,0 +1,26 @@
+{
+    "small": {
+        "appTier": "Standard",
+        "appSku": "S2",
+        "appInstances": 2,
+        "dbTier": "Premium",
+        "dbSku": "P1",  
+        "dbSizeBytes": "107374182400"
+    },
+    "medium": {
+        "appTier": "Standard",
+        "appSku": "S2",
+        "appInstances": 4,
+        "dbTier": "Premium",
+        "dbSku": "P2",
+        "dbSizeBytes": "214748364800"
+    },
+    "large": {
+        "appTier": "PremiumV2",
+        "appSku": "P2v2",
+        "appInstances": 6,
+        "dbTier": "Premium",
+        "dbSku": "P4",
+        "dbSizeBytes": "536870912000"
+    }
+}
