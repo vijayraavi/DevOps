@@ -277,10 +277,7 @@
             "type": "Microsoft.Resources/deployments",
             "properties": {
                 "mode": "incremental",
-                "templateLink": {
-                    "uri": "https://gallery.azure.com/artifact/20161101/Microsoft.CustomScriptExtension-arm.2.0.50/Artifacts/MainTemplate.json"
-                },
-                "parameters": {
+                 "parameters": {
                     "vmName": {
                         "value": "[parameters('virtualMachineName')]"
                     },
@@ -291,9 +288,13 @@
                         "value": "https://iaasv2tempstorageam.blob.core.windows.net/vmextensionstemporary-10030000ac97215e-20180925075536032/install-robots.ps1?sv=2017-04-17&sr=c&sig=3IPBeCTK80q2fdOl%2BYip52CFe4RQOh0Nht09maybl%2Fk%3D&se=2018-09-26T07%3A55%3A36Z&sp=rw"
                     },
                     "arguments": {
-                        "value": ""
+                        "value": "-orchestratorUrl  [parameters('orchestratorUrl')] -machineKey [parameters('machineKey')] -orchestratorConnectionString [parameters('orchestratorConnectionString')]"
                     }
+                },
+                "protectedSettings": {
+                   "commandToExecute": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', parameters('fileUris'), ' ', parameters('arguments'))]"
                 }
+                
             },
             "dependsOn": [
                 "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]"
