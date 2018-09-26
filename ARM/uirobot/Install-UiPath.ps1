@@ -97,27 +97,32 @@ function Main {
             Exit ($process.ExitCode)
         }
 
-    } elseif ($component -eq "Robot") {
-        
-        $msiFeatures = @(
-            "DesktopFeature",
-            "Robot",
-            "StartupLauncher",
-            "RegisterService",
-            "Packages"
-        )
-      
-    } else {
+    } 
 
-        $msiFeatures = @(
-            "DesktopFeature",
-            "Robot",
-            "Studio",
-            "StartupLauncher",
-            "RegisterService",
-            "Packages"
-        )
-    }   
+    if ($component) {
+
+        if ($component -eq "Robot") {
+
+            $msiFeatures = @(
+                "DesktopFeature",
+                "Robot",
+                "StartupLauncher",
+                "RegisterService",
+                "Packages"
+            )
+
+        } else {
+
+            $msiFeatures = @(
+                "DesktopFeature",
+                "Robot",
+                "Studio",
+                "StartupLauncher",
+                "RegisterService",
+                "Packages"
+            )
+        }
+
         $installResult = Install-UiPathEnterprise -msiPath $installerPath -licenseCode $licenseCode -msiFeatures $msiFeatures
 
         if ($installResult.MSIExecProcess.ExitCode -ne 0) {
@@ -126,7 +131,13 @@ function Main {
             Write-Debug (Get-Content $installResult.LogPath)
             Exit ($installResult.MSIExecProcess.ExitCode)
         }
-    
+      
+    } else {
+
+        Write-Error "No component was specified" -ErrorAction Stop
+      
+    }   
+        
 
     $shouldConnect = $orchestratorUrl -or $orchestratorConnectionString
     $connectionData = $null
