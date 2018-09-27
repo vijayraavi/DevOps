@@ -88,21 +88,8 @@ function Main {
 
     Download-UiPathInstaller -version $version -component $component -outputPath $installerPath -beta:$beta -community:$community | Out-Null
 
-    if ($community) {
-
-        $process = Install-UiPathStudioCommunity -studioInstallerPath $installerPath
-
-        if ($process.ExitCode -and $process.ExitCode -ne 0) {
-            Write-Error "The UiPath Studio setup process returned a non-zero exit code: $($process.ExitCode)."
-            Exit ($process.ExitCode)
-        }
-
-    } 
-
-    if ($component) {
-
-        if ($component -eq "Robot") {
-
+    if ($component -match "Robot") {
+            
             $msiFeatures = @(
                 "DesktopFeature",
                 "Robot",
@@ -111,7 +98,7 @@ function Main {
                 "Packages"
             )
 
-        } else {
+    } else {
 
             $msiFeatures = @(
                 "DesktopFeature",
@@ -121,7 +108,18 @@ function Main {
                 "RegisterService",
                 "Packages"
             )
+    }
+
+    if ($community) {
+
+        $process = Install-UiPathStudioCommunity -studioInstallerPath $installerPath
+
+        if ($process.ExitCode -and $process.ExitCode -ne 0) {
+            Write-Error "The UiPath Studio setup process returned a non-zero exit code: $($process.ExitCode)."
+            Exit ($process.ExitCode)
         }
+        
+    } else {
 
         $installResult = Install-UiPathEnterprise -msiPath $installerPath -licenseCode $licenseCode -msiFeatures $msiFeatures
 
@@ -131,13 +129,7 @@ function Main {
             Write-Debug (Get-Content $installResult.LogPath)
             Exit ($installResult.MSIExecProcess.ExitCode)
         }
-      
-    } else {
-
-        Write-Error "No component was specified" -ErrorAction Stop
-      
-    }   
-        
+    }
 
     $shouldConnect = $orchestratorUrl -or $orchestratorConnectionString
     $connectionData = $null
