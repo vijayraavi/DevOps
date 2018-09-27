@@ -9,6 +9,12 @@
                  "description": "Location for all resources."
              }
         },
+        "licenseCode": {
+            "type": "string",
+            "metadata": {
+                "description": "UiPath license code"
+            }
+        },
         "setupOrchLink": {
             "type": "string",
             "defaultValue": "No",
@@ -60,17 +66,11 @@
                  "Standard_B2s",
                  "Standard_F4s"
              ]
-         },
-         "scriptUriBase": {
-            "type": "string",
-            "defaultValue": "https://raw.githubusercontent.com/hteo1337/Tests/master/install-robots.ps1",
-            "metadata": {
-                "description": "Robot installation script"
-            }
-        }
+         }
 
     },
     "variables": {
+        "scriptUriBase": "https://raw.githubusercontent.com/UiPath/DevOps/master/Setup/Install-UiPath.ps1",
         "vmName": "[parameters('virtualMachineName')]",
         "nsgId": "[resourceId(resourceGroup().name, 'Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
         "osDiskType" : "StandardSSD_LRS",
@@ -85,12 +85,13 @@
         "subnetName":"[concat(variables('vmName'), '-subnet')]",
         "vnetId": "[resourceId(resourceGroup().name,'Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', variables('subnetName'))]",
-        "scriptUriNamePieces": "[split(parameters('scriptUriBase'), '/')]",
+        "scriptUriNamePieces": "[split(variables('scriptUriBase'), '/')]",
         "scriptFileString": "[variables('scriptUriNamePieces')[sub(length(variables('scriptUriNamePieces')), 1)]]",
         "scriptFileBreakString": "[split(variables('scriptFileString'), '?')]",
         "scriptFileName": "[variables('scriptFileBreakString')[0]]",
-        "nexecuteScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'))]",
-        "executeScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' -orchestratorUrl ',parameters('orchestratorUrl'),' -machineKey ',parameters('machineKey'))]"
+        "nexecuteScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]",
+        "executeScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-orchestratorUrl',' ',parameters('orchestratorUrl'),' ',' -machineKey',' ',parameters('machineKey'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]"
+    
     },
     "resources": [
         {
@@ -265,7 +266,7 @@
               "typeHandlerVersion": "1.7",
               "autoUpgradeMinorVersion": true,
               "settings": {
-                "fileUris": "[split(parameters('scriptUriBase'), ' ')]"
+                "fileUris": "[split(variables('scriptUriBase'), ' ')]"
               },
               "protectedSettings": {
                 "commandToExecute": "[if(equals(parameters('setupOrchLink'), 'No'),variables('nexecuteScript'),variables('executeScript'))]"
