@@ -3,13 +3,16 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "instanceName": {
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "The name of your Orchestrator website. Must be unique, since it will be available at https://{instanceName}.azurewebsites.net"
+            }
         },
         "databasePassword": {
-            "type": "securestring"
-        },
-        "databaseConnectionString": {
-            "type": "securestring"
+            "type": "securestring",
+            "metadata": {
+                "description": "The password for the account with which Orchestrator will connect to the Azure SQL database. Please make sure it's at least 8 characters long and meets at least three of the following conditions: contains lowercase characters, contains uppercase characters, contains numbers, contains symbols"
+            }
         },
         "templateRepoBase": {
             "type": "string",
@@ -45,9 +48,6 @@
                     "databasePassword": {
                         "value": "[parameters('databasePassword')]"
                     },
-                    "databaseConnectionString": {
-                        "value": "[parameters('databaseConnectionString')]"
-                    },
                     "templateRepoBase": {
                         "value": "[parameters('templateRepoBase')]"
                     },
@@ -61,7 +61,7 @@
                         "value": "S2"
                     },
                     "webappInstanceCount": {
-                        "value": 2
+                        "value": 1
                     },
                     "databaseTier": {
                         "value": "Premium"

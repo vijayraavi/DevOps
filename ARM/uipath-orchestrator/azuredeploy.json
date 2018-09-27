@@ -8,9 +8,6 @@
         "databasePassword": {
             "type": "securestring"
         },
-        "databaseConnectionString": {
-            "type": "securestring"
-        },
         "createDatabase": {
             "type": "string",
             "defaultValue": "Yes",
@@ -47,10 +44,6 @@
             "type": "string",
             "defaultValue": "dbAdmin"
         },
-        "databaseConnectionStringType": {
-            "type": "string",
-            "defaultValue": "SQLAzure"
-        },
         "templateRepoBase": {
             "type": "string",
             "defaultValue": "https://raw.githubusercontent.com/UiPath/DevOps"
@@ -69,7 +62,8 @@
         }
     },
     "variables": {
-        "templateUriBase": "[concat(parameters('templateRepoBase'), '/', parameters('templateRepoBranch'), '/')]"
+        "templateUriBase": "[concat(parameters('templateRepoBase'), '/', parameters('templateRepoBranch'), '/')]",
+        "databaseConnectionString": "[concat('Server=tcp:', parameters('instanceName'), '.database.windows.net,1433;', 'Database=', parameters('instanceName'), ';User ID=', parameters('databaseUsername'), '@', parameters('instanceName'), ';Password=', parameters('databasePassword'), ';Trusted_Connection=False;Encrypt=True;Connection Timeout=30;')]"
     },
     "resources": [
         {
@@ -87,7 +81,7 @@
                         "value": "[parameters('instanceName')]"
                     },
                     "connectionString": {
-                        "value": "[parameters('databaseConnectionString')]"
+                        "value": "[variables('databaseConnectionString')]"
                     },
                     "tier": {
                         "value": "[parameters('webappTier')]"
