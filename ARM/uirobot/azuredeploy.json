@@ -6,8 +6,8 @@
             "type": "string",
             "defaultValue": "[resourceGroup().location]",
             "metadata": {
-                 "description": "Location for all resources."
-             }
+                "description": "Location for all resources."
+            }
         },
         "licenseCode": {
             "type": "string",
@@ -23,66 +23,61 @@
                 "No"
             ],
             "metadata": {
-                 "description": "Setup Orchestrator Connection"
-             }
+                "description": "Setup Orchestrator Connection"
+            }
         },
         "orchestratorUrl": {
-             "type": "string",
-             "defaultValue": "",
-             "metadata": {
-                 "description": "Orchestrator URL."
-             }
-         },
-         "machineKey": {
-             "type": "string",
-             "defaultValue": "",
-             "metadata": {
-                 "description": "Machine Key."
-             }
-         },
-
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Orchestrator URL."
+            }
+        },
+        "machineKey": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Machine Key."
+            }
+        },
         "virtualMachineName": {
-             "type": "string",
-             "metadata": {
-                 "description": "Virtual Machine Name"
-             }
-         },
+            "type": "string",
+            "metadata": {
+                "description": "Virtual Machine Name"
+            }
+        },
         "adminUsername": {
-             "type": "string",
-             "metadata": {
-                 "description": "Admin username"
-             }
-         },
+            "type": "string",
+            "metadata": {
+                "description": "Admin username"
+            }
+        },
         "adminPassword": {
-             "type": "secureString",
-             "metadata": {
-                 "description": "Admin password"
-             }
-         },
-         "virtualMachineSize": {
-             "type": "string",
-             "defaultValue": "Standard_B2s",
-             "allowedValues": [
-                 "Standard_B2s",
-                 "Standard_F4s"
-             ]
-         }
-
+            "type": "securestring",
+            "metadata": {
+                "description": "Admin password"
+            }
+        },
+        "virtualMachineSize": {
+            "type": "string",
+            "defaultValue": "Standard_B2s",
+            "allowedValues": [
+                "Standard_B2s",
+                "Standard_F4s"
+            ]
+        }
     },
     "variables": {
         "scriptUriBase": "https://raw.githubusercontent.com/UiPath/DevOps/master/Setup/Install-UiPath.ps1",
         "vmName": "[parameters('virtualMachineName')]",
         "nsgId": "[resourceId(resourceGroup().name, 'Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
-        "osDiskType" : "StandardSSD_LRS",
-        "publicIpAddressName": "[concat(variables('vmName'), '-pip')]",
-        "publicIpAddressSku": "Basic",
-        "publicIpAddressType":"Dynamic",
+        "osDiskType": "StandardSSD_LRS",
         "networkInterfaceName": "[concat(variables('vmName'), '-nic')]",
         "networkSecurityGroupName": "[concat(variables('vmName'), '-nsg')]",
         "virtualNetworkName": "[concat(variables('vmName'), '-vnet')]",
         "addressPrefix": "10.0.0.0/24",
         "subnetPrefix": "[variables('addressPrefix')]",
-        "subnetName":"[concat(variables('vmName'), '-subnet')]",
+        "subnetName": "[concat(variables('vmName'), '-subnet')]",
         "vnetId": "[resourceId(resourceGroup().name,'Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
         "subnetRef": "[concat(variables('vnetId'), '/subnets/', variables('subnetName'))]",
         "scriptUriNamePieces": "[split(variables('scriptUriBase'), '/')]",
@@ -91,7 +86,6 @@
         "scriptFileName": "[variables('scriptFileBreakString')[0]]",
         "nexecuteScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]",
         "executeScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-orchestratorUrl',' ',parameters('orchestratorUrl'),' ',' -machineKey',' ',parameters('machineKey'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]"
-    
     },
     "resources": [
         {
@@ -101,8 +95,8 @@
             "location": "[parameters('location')]",
             "dependsOn": [
                 "[concat('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]",
-                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
-                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+
             ],
             "properties": {
                 "ipConfigurations": [
@@ -112,10 +106,7 @@
                             "subnet": {
                                 "id": "[variables('subnetRef')]"
                             },
-                            "privateIPAllocationMethod": "Dynamic",
-                            "publicIpAddress": {
-                                "id": "[resourceId(resourceGroup().name, 'Microsoft.Network/publicIpAddresses', variables('publicIpAddressName'))]"
-                            }
+                            "privateIPAllocationMethod": "Dynamic"
                         }
                     }
                 ],
@@ -136,7 +127,7 @@
                         "name": "HTTP",
                         "properties": {
                             "priority": 300,
-                            "protocol": "TCP",
+                            "protocol": "Tcp",
                             "access": "Allow",
                             "direction": "Inbound",
                             "sourceAddressPrefix": "*",
@@ -149,7 +140,7 @@
                         "name": "RDP",
                         "properties": {
                             "priority": 320,
-                            "protocol": "TCP",
+                            "protocol": "Tcp",
                             "access": "Allow",
                             "direction": "Inbound",
                             "sourceAddressPrefix": "*",
@@ -162,7 +153,7 @@
                         "name": "HTTPS",
                         "properties": {
                             "priority": 340,
-                            "protocol": "TCP",
+                            "protocol": "Tcp",
                             "access": "Allow",
                             "direction": "Inbound",
                             "sourceAddressPrefix": "*",
@@ -194,19 +185,6 @@
                         }
                     }
                 ]
-            },
-            "tags": {}
-        },
-        {
-            "name": "[variables('publicIpAddressName')]",
-            "type": "Microsoft.Network/publicIpAddresses",
-            "apiVersion": "2018-08-01",
-            "location": "[parameters('location')]",
-            "properties": {
-                "publicIpAllocationMethod": "[variables('publicIpAddressType')]"
-            },
-            "sku": {
-                "name": "[variables('publicIpAddressSku')]"
             },
             "tags": {}
         },
@@ -261,23 +239,22 @@
             "location": "[parameters('location')]",
             "apiVersion": "2015-06-15",
             "properties": {
-              "publisher": "Microsoft.Compute",
-              "type": "CustomScriptExtension",
-              "typeHandlerVersion": "1.7",
-              "autoUpgradeMinorVersion": true,
-              "settings": {
-                "fileUris": "[split(variables('scriptUriBase'), ' ')]"
-              },
-              "protectedSettings": {
-                "commandToExecute": "[if(equals(parameters('setupOrchLink'), 'No'),variables('nexecuteScript'),variables('executeScript'))]"
-              }
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.7",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": "[split(variables('scriptUriBase'), ' ')]"
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[if(equals(parameters('setupOrchLink'), 'No'),variables('nexecuteScript'),variables('executeScript'))]"
+                }
             },
             "dependsOn": [
                 "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
             ]
-          }
-
- ],
+        }
+    ],
     "outputs": {
         "adminUsername": {
             "type": "string",

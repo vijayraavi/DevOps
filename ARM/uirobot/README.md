@@ -2,7 +2,6 @@
 
 This template creates a Virtual Machine (VM) in a resource group, then deploy **UiPath Robot**.
 Based on the Virtual Machine (VM) name, following components are created : </br> 
-    -public IP (vmname-pip),</br> 
     -VM network interface (vmname-nic), </br> 
     -Network security group (vmname-nsg with following open ports : 80,443 and 3389),</br> 
     -Virtual network (vmname-vnet).</br> 
