@@ -1,0 +1,419 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "allowedValues": [
+        "West Europe",
+        "North Europe"
+      ],
+      "defaultValue": "North Europe",
+      "metadata": {
+        "description": "Location for the VMs, only certain regions support zones during preview."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Username for the Virtual Machine."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for the Virtual Machine."
+      }
+    },
+    "vmHostName": {
+      "type": "string",
+      "metadata": {
+        "description": "Unique DNS Name for the Public IP for the frontend load balancer."
+      }
+    },
+    "numberOfVms": {
+      "type": "int",
+      "defaultValue": 2,
+      "minValue": 1,
+      "maxValue": 10,
+      "metadata": {
+        "description": "Number of VMs to provision"
+      }
+    },
+    "setupOrchLink": {
+      "type": "string",
+      "defaultValue": "No",
+      "allowedValues": [
+          "Yes",
+          "No"
+      ],
+      "metadata": {
+           "description": "Setup Orchestrator Connection"
+       }
+    },
+    "licenseCode": {
+      "type": "string",
+      "metadata": {
+          "description": "UiPath license code"
+      }
+    },
+    "orchestratorConnectionString": {
+       "type": "string",
+       "defaultValue": "",
+       "metadata": {
+           "description": "Orchestrator ConnectionString URL."
+       }
+    }
+  },
+  "variables": {
+    "storageAccountName": "[concat('diags', uniquestring(resourceGroup().id))]",
+    "nicName": "myVMNic",
+    "subnetName": "Subnet-1",
+    "publicIPAddressName": "myPublicIP",
+    "virtualNetworkName": "MyVNET",
+    "networkSecurityGroupName": "allowRemoting",
+    "lbName": "multiVMLB",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets/', variables('virtualNetworkName'), variables('subnetName'))]",
+    "lbID": "[resourceId('Microsoft.Network/loadBalancers', variables('lbName'))]",
+    "frontEndIPConfigID": "[concat(variables('lbID'), '/frontendIPConfigurations/loadBalancerFrontend')]",
+    "inboundNatRuleName1": "RDP",
+    "inboundNatRuleName2": "WinRM",
+    "windowsImage": {
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2016-Datacenter",
+      "version": "latest"
+    },
+    "scriptUriBase": "https://raw.githubusercontent.com/UiPath/DevOps/master/Setup/Install-UiPath.ps1",
+    "scriptUriNamePieces": "[split(variables('scriptUriBase'), '/')]",
+    "scriptFileString": "[variables('scriptUriNamePieces')[sub(length(variables('scriptUriNamePieces')), 1)]]",
+    "scriptFileBreakString": "[split(variables('scriptFileString'), '?')]",
+    "scriptFileName": "[variables('scriptFileBreakString')[0]]",
+    "nexecuteScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]",
+    "executeScript": "[concat ('powershell -ExecutionPolicy Unrestricted -File ', variables('scriptFileName'),' ','-orchestratorConnectionString',' ',parameters('orchestratorConnectionString'),' ','-licenseCode',' ',parameters('licenseCode'),' -beta')]",
+    "hostDNSNameScriptArgument": "[concat(parameters('vmHostName'),resourceGroup().location,'.cloudapp.azure.com')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2017-06-01",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "Storage",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('vmHostName')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2016-03-30",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('networkSecurityGroupName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "RemoteConnection",
+            "properties": {
+              "description": "Allow RDP",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('virtualNetworkName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[variables('networkSecurityGroupName')]"
+      ],
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicName'), copyindex())]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "nicLoop",
+        "count": "[parameters('numberOfVms')]"
+      },
+      "dependsOn": [
+        "[variables('virtualNetworkName')]",
+        "[variables('lbName')]",
+        "lbNatLoop"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(variables('lbID'), '/backendAddressPools/LoadBalancerBackend')]"
+                }
+              ],
+              "loadBalancerInboundNatRules": [
+                {
+                  "id": "[concat(variables('lbID'),'/inboundNatRules/', variables('inboundNatRuleName1'), copyindex())]"
+                },
+                {
+                  "id": "[concat(variables('lbID'),'/inboundNatRules/', variables('inboundNatRuleName2'), copyindex())]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "name": "[variables('lbName')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "dependsOn": [
+        "[variables('publicIPAddressName')]"
+      ],
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "LoadBalancerFrontend",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "LoadBalancerBackend"
+          }
+        ],
+        "loadbalancingRules": [
+          {
+            "name": "port80",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontendIPConfigID')]"
+              },
+              "backendaddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers/', variables('lbName')), '/backendAddressPools/LoadBalancerBackend')]"
+              },
+              "protocol": "tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "probe": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('lbName')), '/probes/tcpProbe')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "tcpProbe",
+            "properties": {
+              "protocol": "tcp",
+              "port": 80,
+              "intervalInSeconds": "5",
+              "numberOfProbes": "2"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "type": "Microsoft.Network/loadBalancers/inboundNatRules",
+      "name": "[concat(variables('lbName'), '/', variables('inboundNatRuleName1'), copyIndex())]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "lbNatLoop",
+        "count": "[parameters('numberOfVms')]"
+      },
+      "dependsOn": [
+        "[variables('lbName')]"
+      ],
+      "properties": {
+        "frontendIPConfiguration": {
+          "id": "[variables('frontEndIPConfigID')]"
+        },
+        "protocol": "tcp",
+        "frontendPort": "[copyIndex(50000)]",
+        "backendPort": "3389",
+        "enableFloatingIP": false
+      }
+    },
+    {
+      "apiVersion": "2017-08-01",
+      "type": "Microsoft.Network/loadBalancers/inboundNatRules",
+      "name": "[concat(variables('lbName'), '/', variables('inboundNatRuleName2'), copyIndex())]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "lbNatLoop",
+        "count": "[parameters('numberOfVms')]"
+      },
+      "dependsOn": [
+        "[variables('lbName')]"
+      ],
+      "properties": {
+        "frontendIPConfiguration": {
+          "id": "[variables('frontEndIPConfigID')]"
+        },
+        "protocol": "tcp",
+        "frontendPort": "[copyIndex(40000)]",
+        "backendPort": "5986",
+        "enableFloatingIP": false
+      }
+    },
+    {
+      "apiVersion": "2017-03-30",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(parameters('vmHostName'), copyindex())]",
+      "copy": {
+        "name": "virtualMachineLoop",
+        "count": "[parameters('numberOfVms')]"
+      },
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "nicLoop"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_A2_v2"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('vmHostName'), copyIndex())]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": "[variables('windowsImage')]",
+          "osDisk": {
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('nicName'),copyindex()))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true",
+            "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))).primaryEndpoints.blob]"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('vmHostName'), copyIndex(),'/CustomScriptExtension')]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "location": "[parameters('location')]",
+      "apiVersion": "2015-06-15",
+      "copy": {
+          "name": "CustomScriptInstallRobot",
+          "count": "[parameters('numberOfVms')]"
+        },
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.7",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": "[split(variables('scriptUriBase'), ' ')]"
+        },
+        "protectedSettings": {
+          "commandToExecute": "[if(equals(parameters('setupOrchLink'), 'No'),variables('nexecuteScript'),variables('executeScript'))]"
+        }
+      },
+      "dependsOn": [
+        "virtualMachineLoop",
+        "CustomScriptWinRM"
+      ]
+    },
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmHostName'), copyIndex(),'/WinRMCustomScriptExtension')]",
+      "location": "[resourceGroup().location]",
+      "copy": {
+        "name": "CustomScriptWinRM",
+        "count": "[parameters('numberOfVms')]"
+      },
+      "dependsOn": [
+        "virtualMachineLoop"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.7",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/ConfigureWinRM.ps1",
+            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/makecert.exe",
+            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/winrmconf.cmd"
+          ],
+          "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ConfigureWinRM.ps1 ',variables('hostDNSNameScriptArgument'))]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "hostname": {
+      "type": "string",
+      "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn]"
+    }
+  }
+}
