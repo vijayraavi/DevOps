@@ -363,7 +363,7 @@
       "location": "[parameters('location')]",
       "apiVersion": "2015-06-15",
       "copy": {
-          "name": "CustomScriptInstallRobot",
+          "name": "CustomScriptInstallRobotLoop",
           "count": "[parameters('numberOfVms')]"
         },
       "properties": {
@@ -379,35 +379,8 @@
         }
       },
       "dependsOn": [
-        "virtualMachineLoop",
-        "CustomScriptWinRM"
-      ]
-    },
-    {
-      "apiVersion": "2015-06-15",
-      "type": "Microsoft.Compute/virtualMachines/extensions",
-      "name": "[concat(parameters('vmHostName'), copyIndex(),'/WinRMCustomScriptExtension')]",
-      "location": "[resourceGroup().location]",
-      "copy": {
-        "name": "CustomScriptWinRM",
-        "count": "[parameters('numberOfVms')]"
-      },
-      "dependsOn": [
         "virtualMachineLoop"
-      ],
-      "properties": {
-        "publisher": "Microsoft.Compute",
-        "type": "CustomScriptExtension",
-        "typeHandlerVersion": "1.7",
-        "settings": {
-          "fileUris": [
-            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/ConfigureWinRM.ps1",
-            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/makecert.exe",
-            "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vm-winrm-lb-windows/winrmconf.cmd"
-          ],
-          "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ConfigureWinRM.ps1 ',variables('hostDNSNameScriptArgument'))]"
-        }
-      }
+      ]
     }
   ],
   "outputs": {
